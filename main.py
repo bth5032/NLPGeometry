@@ -22,40 +22,60 @@ optimizers = {"SGD": torch.optim.SGD,
               "Adadelta": torch.optim.Adadelta,
               "Adam": torch.optim.Adam}
 
+# Image classifcation sets
+data_sources = {"mnist": {"dataset": datasets.MNIST,
+                          "transforms": transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]),
+                          "local_path": "data/mnist",
+                          "in_channels": 1,
+                          "size": 28,
+                          "num_classes": 10},
+                "cifar": {"dataset":datasets.CIFAR10,
+                          "transforms": transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+                          "local_path": "data/cifar10",
+                          "in_channels": 3,
+                          "size": 32,
+                          "num_classes": 10},
+                "cifar100": {"dataset":datasets.CIFAR100,
+                          "transforms": transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
+                          "local_path": "data/cifar100",
+                          "in_channels": 3,
+                          "size": 32,
+                          "num_classes": 100}
+                }
 
-def main(epochs, lr, optimizer_type, es_param):
-    """Train the SO3 model on MNIST for fun, report performance metrics.
 
-    Training for 5 epochs with SGD and a learning rate of .01 yielded:
-    Accuracy:
-    Precisions:
-    Recalls:
-
-    Not bad for a tiny model first pass! Would be cool to look at the clustering
+def main(epochs, lr, optimizer_type, es_param, data_source):
+    """Train the SO3 model on basic datasets for fun, report performance metrics.
     """
 
-    # Load MNIST data
-    transform_group = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+    # Load data
+    cfg = data_sources[data_source]
 
     # Train
-    mnist_train = datasets.MNIST('data/mnist', train=True, download=True, transform=transform_group)
+    source_train = cfg["dataset"](cfg["local_path"], train=True, download=True, transform=cfg["transforms"])
     # split into train val
-    train, val = torch.utils.data.random_split(mnist_train, [50000, 10000])
+    ratio = 1/10
+    num_samples = len(source_train)
+    num_val = int(ratio*num_samples)
+    train, val = torch.utils.data.random_split(source_train, [num_samples-num_val, num_val])
     train_loader = torch.utils.data.DataLoader(train, batch_size=1)
     val_loader = torch.utils.data.DataLoader(val, batch_size=1)
 
     # No validation yet, cause lazy and just getting something running
 
     # Test
-    mnist_test = datasets.MNIST('data/mnist', train=False, download=True,
-                                      transform=transform_group)
-    test_loader = torch.utils.data.DataLoader(mnist_test, batch_size=1)
+    source_test = cfg["dataset"](cfg["local_path"], train=False, download=True, transform=cfg["transforms"])
+
+    test_loader = torch.utils.data.DataLoader(source_test, batch_size=1)
 
     # Set device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Initialize network
-    model = SO3Classifier().to(device)
+    in_channels = cfg["in_channels"]
+    in_size = cfg["size"]
+    num_classes = cfg["num_classes"]
+    model = SO3Classifier(in_channels, in_size, num_classes).to(device)
 
     # Training utilities
     optimizer = optimizers[optimizer_type](model.parameters(), lr=lr)
@@ -101,7 +121,7 @@ def parse_args():
                         help='Number of training loops.')
     parser.add_argument('--lr',
                         type=float,
-                        default=.01,
+                        default=.001,
                         help='Learning rate to use in SGD.')
     parser.add_argument('--optimizer_type',
                         type=str,
@@ -112,6 +132,11 @@ def parse_args():
                         default=5,
                         help="Param that controls this stupid version of \
                         early stopping.")
+    parser.add_argument('--data_source',
+                        type=str,
+                        default="cifar100",
+                        help="Which torchvision.datasets dataset to train on. \
+                        Only mnist or cifar /cifar100 right now.")
     args = parser.parse_args()
     return args
 
