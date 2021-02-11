@@ -29,7 +29,7 @@ data_sources = {"mnist": {"dataset": datasets.MNIST,
                           "in_channels": 1,
                           "size": 28,
                           "num_classes": 10},
-                "cifar": {"dataset":datasets.CIFAR10,
+                "cifar10": {"dataset":datasets.CIFAR10,
                           "transforms": transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
                           "local_path": "data/cifar10",
                           "in_channels": 3,
@@ -136,7 +136,7 @@ def parse_args():
                         type=str,
                         default="cifar100",
                         help="Which torchvision.datasets dataset to train on. \
-                        Only mnist or cifar /cifar100 right now.")
+                        Only mnist or cifar10 /cifar100 right now.")
     args = parser.parse_args()
     return args
 
